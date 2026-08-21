@@ -14,18 +14,25 @@ Create a file `collatz/collatz.cpp`. C++ source files carry the extension `.cpp`
 #include <iostream>
 #include <vector>
 
+// execution start
 int main() {
     int n;
+    // read from stdin
     std::cin >> n;
+    // create a array
     std::vector<int> series;
+    // reserve capacity of 1024 positions
     series.reserve(1024);
+    // add an element to the end
     series.push_back(n);
+    // get the last element of the array
     while (series.back() != 1) {
         if (n % 2 == 0) {
             n = n / 2;
         } else {
             n = 3 * n + 1;
         }
+        // add n to the end
         series.push_back(n);
     }
     /*
@@ -429,7 +436,7 @@ int main(){
     }
     std::cout << std::endl;
     if (main_arr[97] == 1){
-        return 1; // early exit: main_arr goes out of scope, the memory is freed 
+        return 1; // early exit: main_arr goes out of scope, the memory is freed
     }
     return 0; // main_arr goes out of scope, the memory is freed
 }
@@ -793,8 +800,8 @@ A common convention in C++ is one class per header and source pair. The two prov
 
 class Shape {
 public:
-    virtual ~Shape() = default;    
-    virtual void draw() const = 0; 
+    virtual ~Shape() = default;
+    virtual void draw() const = 0;
 };
 ```
 
@@ -936,7 +943,7 @@ cmake --build build
 
 ## The Ranges and Algorithms Library
 
-We close with the algorithms library, which recovers much of the comfort you are used to from Python: `sorted` with a key and `functools.reduce` both have counterparts here.  The goal of this example is to show how algorithms can be written more concisely and clearly by building on the existing language library functionalities. Our example is the knapsack problem. We are given items, each with a weight and a value, and a knapsack of capacity 25, and we want to pack as much value as possible into it. We generate 10 random items and try the classic greedy heuristic: pack the items with the best value per weight first. Create `knapsack/knapsack.cpp`. 
+We close with the algorithms library, which recovers much of the comfort you are used to from Python: `sorted` with a key and `functools.reduce` both have counterparts here.  The goal of this example is to show how algorithms can be written more concisely and clearly by building on the existing language library functionalities. Our example is the knapsack problem. We are given items, each with a weight and a value, and a knapsack of capacity 25, and we want to pack as much value as possible into it. We generate 10 random items and try the classic greedy heuristic: pack the items with the best value per weight first. Create `knapsack/knapsack.cpp`.
 
 ```cpp
 #include <algorithm>

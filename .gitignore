@@ -1,3 +1,7 @@
 .claude
 **/build/
 **/.DS_Store
+*.o
+*.d
+references/
+*.swp
