@@ -219,23 +219,25 @@ SCIP_DECL_BRANCHEXECLP(DriebeekPenalties::scip_execlp) {
         get_tableau_row(scip, lp_cols, lp_rows, basic_indices, idx);
 
     /*
-     * General bound-aware Driebeek penalty:
+     * General bound-aware Driebeek penalty for basic variable x_i we are branching on:
      *
      *   down_gap = x_i* - floor(x_i*)
      *   up_gap   = ceil(x_i*) - x_i*
      *
-     * For each nonbasic variable j:
+     * We now want to decide which variable to branch on next. For each nonbasic variable j:
      *
      *   down_delta[j] =  down_gap / tableau_coeff[j]
      *   up_delta[j]   = -up_gap   / tableau_coeff[j]
      *
-     * A movement delta is infeasible if x_j is fixed, if delta > 0 while x_j
-     * is at its upper bound, or if delta < 0 while x_j is at its lower bound.
+     * A movement delta is infeasible if
+     * a). x_j is fixed,
+     * b). if delta > 0 while x_j is at its upper bound, or
+     * c). if delta < 0 while x_j is at its lower bound.
      *
      *   movement_penalty(j, delta) =
-     *     infinity,                 if the movement is infeasible
-     *     0,                        if x_j has AtZero basis status
-     *     reduced_costs[j] * delta, otherwise
+     *     infinity,                    if the movement is infeasible
+     *     0,                           if x_j has AtZero basis status
+     *     reduced_costs[j] * delta,    otherwise
      *
      * In this minimization problem, movement_penalty is the minimum amount by
      * which the objective value must worsen (increase) when x_j moves by delta.
@@ -253,10 +255,39 @@ SCIP_DECL_BRANCHEXECLP(DriebeekPenalties::scip_execlp) {
      * and least_down_penalty
      *
      */
-    auto least_up_penalty = SCIPinfinity(scip);
-    auto least_down_penalty = SCIPinfinity(scip);
 
-    // TODO: Compute least_up_penalty and least_down_penalty.
+    auto down_gap = sol - std::floor(sol);
+    auto up_gap   = std::ceil(sol) - sol;
+
+    auto movement_penalty_up = std::vector<SCIP_Real>();
+    auto movement_penalty_down = std::vector<SCIP_Real>();
+
+    for(auto j = 0; j < std::ssize(tableau_coeff); j++) {
+      if (tableau_coeff[j] == 0 || idx == j) {
+        continue;
+      }
+      auto down_delta = down_gap / tableau_coeff[j];
+      auto up_delta = -1 * up_gap / tableau_coeff[j];
+
+      movement_penalty_up.push_back(reduced_costs[j] * up_delta);
+      movement_penalty_down.push_back(reduced_costs[j] * down_delta);
+
+      if (lower_bounds[j] == upper_bounds[j]) {
+        if ((lp_solution[j] == upper_bounds[j] && up_delta > 0) ||
+          (lp_solution[j] == lower_bounds[j] && up_delta < 0)) {
+          movement_penalty_up.push_back(SCIPinfinity(scip));
+        } if ((lp_solution[j] == upper_bounds[j] && down_delta > 0) ||
+          (lp_solution[j] == lower_bounds[j] && down_delta < 0)) {
+          movement_penalty_down.push_back(SCIPinfinity(scip));
+        }
+      } else if (base_stats[j] == AtZero) {
+        movement_penalty_up.push_back(0);
+        movement_penalty_down.push_back(0);
+      }
+    }
+
+    auto least_up_penalty = std::ranges::min(movement_penalty_up);
+    auto least_down_penalty = std::ranges::min(movement_penalty_down);
 
     /*
     * Our driebeek penalty give lowerbounds on the LP objective if we branch up
