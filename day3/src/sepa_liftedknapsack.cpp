@@ -99,11 +99,11 @@ SCIP_DECL_SEPAEXECLP(LiftedKnapsackSepa::scip_execlp) {
         continue;  // Row is a <= constraint
       }
       if (!SCIPisGT(scip, rhs - constant, 0)) {
-        continue;  // RHsi is not positive
+        continue;  // RHs is not positive
       }
       // b must also be integral
       if (!SCIPisIntegral(scip, rhs - constant)) continue;
-      // Check if all nonzero coefficient corresponds to binary variable
+      // Check if all nonzero coefficients correspond to binary variable
       std::span<SCIP_Col*> nonzero_col(SCIProwGetCols(row),
                                        SCIProwGetNNonz(row));
       bool all_binary = true;
@@ -135,7 +135,7 @@ SCIP_DECL_SEPAEXECLP(LiftedKnapsackSepa::scip_execlp) {
     // Necessary check for technical reasons.
     if (SCIProwGetNLPNonz(row) != SCIProwGetNNonz(row)) continue;
 
-    // Now the code actually start
+    // Now the code actually starts
     std::span<SCIP_COL* const> row_cols(SCIProwGetCols(row),
                                         SCIProwGetNNonz(row));
     std::span<SCIP_Real> row_coeffs(SCIProwGetVals(row), SCIProwGetNNonz(row));
@@ -143,66 +143,76 @@ SCIP_DECL_SEPAEXECLP(LiftedKnapsackSepa::scip_execlp) {
 
     /*
      * We have a knapsack row so the row is
-     * a[0]*x[i_1] + a[1]*x[i_2] + ... + a[k]*x[i_k] <= b
-     * where a >= 0, {i_1, ..., i_k} c {1,..., n}
+     * a[1]*x[i_1] + a[2]*x[i_2] + ... + a[k]*x[i_k] <= b
+     * where a >= 0, {i_1, ..., i_k} subset of {1, ..., n}
      * to simplify, we can pretend the row is of the form
-     * a[0]*x[1] + ... + a[k]*x[k] <= b
+     * a[1]*x[1] + ... + a[k]*x[k] <= b
      * and only do the mapping back at the end
      * the vector a is already available as row_coefs
      */
     // Get the vector x
     std::vector<SCIP_Real> incumbent_solution;
     incumbent_solution.reserve(n_k);
-    for (auto col : row_cols)
+    for (auto col : row_cols) {
       incumbent_solution.push_back(SCIPcolGetPrimsol(col));
+    }
     // Get the mapping m -> i_m
     std::vector<int> indices;
     indices.reserve(n_k);
-    for (auto col : row_cols) indices.push_back(SCIPcolGetLPPos(col));
+    for (auto col : row_cols) {
+      indices.push_back(SCIPcolGetLPPos(col));
+    }
     auto rhs = SCIProwGetRhs(row) - SCIProwGetConstant(row);
     // Items taken should contain your cover
     std::vector<int> items_taken;
 
     // Start here :)
-    // Check that the row is not trivially satisfiable(by setting all xs 0 to 1
+    // Check that the row is not trivially satisfiable (by setting all x_i to 1
     // otherwise continue)
-
-    // ...
+    auto sum = 0.0;
+    for (auto i : indices) {
+      sum += row_coeffs[i];
+    }
+    if (sum > rhs) continue;
 
     // for our purposes now the row is ax_0 + ax_1 + ... + ax_n <= b, where
-    // b= rhs and all x_i are binary
-
+    // b = rhs and all x_i are binary
     // ...
 
     // We do multiple past for clarity
-    // First past get all LP solutions where x_j = 1
-
+    // First past gets all LP solutions where x_j = 1
     // ...
 
     // For each of the remaining vars
     // We construct a vector of pairs (cost per unit of weight, indices)
-    // Hint: std::vector<std::pair<SCIP_Real,int>> list;
-    // list.push_back(std::make_pair(quantity, index));
+    // Hint:
+    std::vector<std::pair<SCIP_Real,int>> list;
+    for (auto i : indices) {
+      auto incumbent = incumbent_solution[i];
+      if (incumbent != 1) {
+        SCIP_Real quantity = row_coeffs[i];
+        list.push_back(std::make_pair(quantity, i));
+      }
+    }
 
-    // ...
-
-    // Sort using std::ranges::sort by default ranges is sorted in ascending
-    // order it is sorted by first checking the first argument
-
-    // ...
+    // Sort using std::ranges::sort (by default ranges is sorted in ascending order)
+    // it is sorted by first checking the first argument
+    std::ranges::sort(list);
 
     // start grabbing while accumulated_weight is not greater than b+1
     // Use auto [ratio, index] = vars[i]; to extract data from pair
-
-    // ...
+    auto weight_capacity = rhs+1;
+    for (auto [ratio, index] : list) {
+      auto new_weight = row_coeffs[index];
+      if (new_weight > weight_capacity) break;
+      items_taken.push_back(index);
+    }
 
     // We might overshoot so see if item could have been removed
-
     // ...
 
     // No cut can be separated (at least as we heuristically can see it from
     // this constraint)
-
     // ...
 
     // End of code you need to fill
@@ -218,3 +228,4 @@ SCIP_DECL_SEPAEXECLP(LiftedKnapsackSepa::scip_execlp) {
   }
   return SCIP_OKAY;
 }
+
